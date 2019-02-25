@@ -3,6 +3,14 @@ CXX = g++
 
 C_FLAGS = -g -std=c++11 -Wno-deprecated
 
+platform=
+WINCXX = i686-w64-mingw32-g++
+ifeq ($(platform),win)
+	CXX=$(WINCXX)
+	OPTS = -DWIN
+	C_FLAGS = -g -std=c++11 $(OPTS)
+endif
+
 INCLUDE_PATH = 
 
 LIB_FLAGS = -L../treeminer/libtreeminer

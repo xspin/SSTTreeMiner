@@ -53,7 +53,7 @@ bool F1cmp(int x, int y){
    else return !res;
 }
    
-inline bool is_file_exist(const string &fileName)
+bool isfileexist(const string &fileName)
 {
     std::ifstream infile(fileName.c_str());
     return infile.good();
@@ -772,16 +772,37 @@ void main_func()
    summary.close();
 }
 
+bool is_valid_data(const std::string& file) {
+    std::string line;
+    std::ifstream ifs(file);
+    int r = 0;
+    while(getline(ifs, line)) {
+        r++;
+        std::istringstream iss(line);
+        int t;
+        int cnt = 0;
+        while(iss >> t) {
+            cnt += t<0?-1:1;
+        }
+        if(cnt != 0) {
+           std::cerr << "DATA ERROR: [" << file << "] line: " << r << " count: " << cnt << std::endl;
+           return false;
+        }
+    }
+    ifs.close();
+    return true;
+}
 void treeminer(const string& datafile, const string& outfile, const string& t, double minsup) {
    cout << "  data file: " << datafile << endl 
       << "  output file: " << outfile << endl;
-   assert(is_file_exist(datafile));
+   assert(isfileexist(datafile));
+   assert(is_valid_data(datafile));
    fout.open(outfile.c_str());
    // treeminer -i datafile -s[S] minsup 
    sprintf(infile,"%s",datafile.c_str());
    if(t == "-s") //support value for L2
       MINSUP_PER = minsup;
-   else if (t == "S") { //absolute support
+   else if (t == "-S") { //absolute support
       MINSUPPORT = int(minsup);
    } else {
       cerr << "treeminer: invalid arg: " << t << endl;

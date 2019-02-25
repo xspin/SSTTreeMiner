@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include <functional>
 
 #define BranchIt -1 //-1 indicates a branch in the tree
@@ -31,6 +33,8 @@ template<class T>
 struct delnode: public unary_function<T, void>{
    void operator() (T x){ delete x; }
 };
+
+bool is_valid_data(const std::string& file);
 
 void treeminer(const string& datafile, const string& outfile, const string& t, double minsup);
 

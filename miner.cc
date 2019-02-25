@@ -1,123 +1,129 @@
 #include <iostream>
+#include <cstdio>
 #include <string>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "xmlprocess.h"
 #include "treeminer/treeminer.h"
 #include "sstminer/sstminer.h"
 
-using namespace std;
-using namespace sst;
-
-void test_f5(double s, bool sst=false) {
-    XMLPool xmlpool = XMLPool(false, sst);
-    std::string f5t0 = "data/f5/t0.xml";
-    std::string f5t1 = "data/f5/t1.xml";
-    std::string f5t2 = "data/f5/t2.xml";
-    xmlpool.process(f5t0);
-    xmlpool.process(f5t1);
-    xmlpool.process(f5t2);
-    string idfile = "data/f5/id";
-    if(sst) idfile += "sst";
-    idfile += ".data";
-    string datafile = "data/f5/encoding";
-    if(sst) datafile += "sst";
-    datafile += ".data";
-    xmlpool.export_data(idfile, datafile);
-    string outfile = "data/f5/out";
-    if(sst) outfile += "sst";
-    outfile += ".data";
-    cout << "treeminer ... " << endl;
-    treeminer(datafile, outfile, "-s", s);
+void usage(){
+    std::string doc = 
+    "\nUsage: miner [OPTION] ... [FILE] ...\n\n"
+    "  -h               print this help\n"
+    "  -p [PATH]        path of XML files\n"
+    "  -d [FILE]        encoding data file\n"
+    "  -i [FILE]        ID file of XML tags\n"
+    "  -m [MINER]       mining method: treeminer(default) or sstminer\n"
+    "  -o [FILE]        output file\n"
+    "  -s [MINSUP]      proportional minimum support\n"
+    "  -S [MINSUP]      absolute minimum support (default 0)\n\n"
+    "Process XML file:\n"
+    "  miner -p [XML_file_path] -d [encoding_file] -i [ID_file]\n\n"
+    "Call treeminer or sstminer:\n"
+    "  miner -m [treeminer/sstminer] -d [encoding_file] -o [output_file] -s[S] [minsup]\n\n"
+    "Process XML file and call treeminer/sstminer:\n"
+    "  miner -p [XML_file_path] -m [treeminer/sstminer] ...\n";
+    std::cout << doc << std::endl;
 }
 
-void test_f5leaf(double s, bool sst=false) {
-    XMLPool xmlpool = XMLPool(true, sst);
-    std::string f5t0 = "data/f5leaf/t0.xml";
-    std::string f5t1 = "data/f5leaf/t1.xml";
-    std::string f5t2 = "data/f5leaf/t2.xml";
-    xmlpool.process(f5t0);
-    xmlpool.process(f5t1);
-    xmlpool.process(f5t2);
-    string idfile = "data/f5leaf/id";
-    if(sst) idfile += "sst";
-    idfile += ".data";
-    string datafile = "data/f5leaf/encoding";
-    if(sst) datafile += "sst";
-    datafile += ".data";
-    xmlpool.export_data(idfile, datafile);
-    string outfile = "data/f5leaf/out";
-    if(sst) outfile += "sst";
-    outfile += ".data";
-    cout << "treeminer ... " << endl;
-    treeminer(datafile, outfile, "-s", s);
-}
+int main(int argc, char** argv){
+    int ch;
+    std::string xmlpath, datafile, idfile("temp/temp_id.txt"), method("treeminer"), outfile("temp/temp_out.txt");
+    std::string minsup_tag = "-S";
+    double minsup = 0;
+    while((ch=getopt(argc, argv, "p:d:i:m:o:s:S:h")) != -1) {
+        switch(ch) {
+            case 'p':
+                xmlpath = optarg;
+                break;
+            case 'd':
+                datafile = optarg;
+                break;
+            case 'i':
+                idfile = optarg;
+                break;
+            case 'm':
+                method = optarg;
+                break;
+            case 'o':
+                outfile = optarg;
+                break;
+            case 's':
+                minsup_tag = "-s";
+                minsup = atof(optarg);
+                break;
+            case 'S':
+                minsup_tag = "-S";
+                minsup = atof(optarg);
+                break;
+            case 'h':
+                usage();
+                break;
+            default:
+                // std::cerr << "invalid argument: " << (char)ch << std::endl;
+                usage();
+                exit(1);
+        }
+    }
+    // std::cout << "XML: " << xmlpath << std::endl
+    // << "encoding: " << datafile << std::endl
+    // << "id: " << idfile << std::endl 
+    // << "out: " << outfile << std::endl
+    // << "method: " << method << std::endl
+    // << "minsup: " << minsup << std::endl;
+    if(xmlpath=="" and datafile=="") {
+        std::cerr << "invalid option! One of '-p' and '-d' must be set\n";
+        usage();
+        exit(1);
+    } else if(datafile=="") {
+        datafile = "temp/temp_encoding.txt";
+    }
+    if(method!="treeminer" and method!="sstminer") {
+        std::cerr << "invalid argument! '-m' must be followed by 'treeminer' or 'sstminer'\n";
+        usage();
+        exit(1);
+    }
+#ifdef WIN
+    mkdir("temp");
+#else
+    mkdir("temp", S_IRWXU);
+#endif
+    std::string sstdatafile = "temp/temp_sst_encoding.txt";
+    XMLPool pool;
+    if(xmlpath != "") {
+        DIR *dir;
+        struct dirent *ent;
+        if ((dir = opendir(xmlpath.c_str())) != NULL) {
+            /* print all the files and directories within directory */
+            while ((ent = readdir (dir)) != NULL) {
+                // printf ("%s\n", ent->d_name);
+                int len = strlen(ent->d_name);
+                if(len<4) continue;
+                std::string suffix = ent->d_name + (len-4);
+                if(suffix != ".xml") continue;
+                std::string xmlfile = xmlpath + "/" + ent->d_name;
+                pool.process(xmlfile);
+            }
+            closedir (dir);
+        } else {
+            perror ("");
+            exit(1);
+        }
+        pool.export_data(idfile, datafile);
+        return 0;
+    } 
+    if(method=="sstminer") {
+        pool.process_sst(datafile);
+        pool.export_sstdata(sstdatafile);
+        std::cout << "sstminer ..." << std::endl;
+        sst::sstminer(sstdatafile, outfile, minsup_tag, minsup);
+    } else {
+        std::cout << "treeminer ..." << std::endl;
+        treeminer(datafile, outfile, minsup_tag, minsup);
+    }
 
-void test_sst(double s, bool sst=false) {
-    XMLPool xmlpool = XMLPool(false, sst);
-    std::string xmlfn = "data/testsst/test_sst.xml";
-    std::string xmlfn1 = "data/testsst/test_sst.1.xml";
-    string idfile = "data/testsst/id";
-    if(sst) idfile += "sst";
-    idfile += ".data";
-    string datafile = "data/testsst/encoding";
-    if(sst) datafile += "sst";
-    datafile += ".data";
-    string outfile = "data/testsst/out";
-    if(sst) outfile += "sst";
-    outfile += ".data";
-
-    xmlpool.process(xmlfn);
-    xmlpool.process(xmlfn1);
-    xmlpool.export_data(idfile, datafile);
-    cout << "treeminer ... " << endl;
-    treeminer(datafile, outfile, "-s", s);
-}
-
-void test_testF5(double s) {
-    XMLPool xmlpool = XMLPool();
-    std::string datafile = "data/test/F5.data";
-    std::string sstdatafile = "data/test/F5_sst.data";
-    std::string outfile = "data/test/F5_out.data";
-    std::string sstoutfile = "data/test/F5_sst_out.data";
-    xmlpool.process(datafile, false);
-    xmlpool.export_sstdata(sstdatafile);
-    cout << "sstminer... " << endl;
-    sstminer(sstdatafile, sstoutfile, "-s", s);
-    cout << "treeminer... " << endl;
-    treeminer(datafile, outfile, "-s", s);
-}
-
-void test_testD10(double s) {
-    XMLPool xmlpool = XMLPool();
-    std::string datafile = "data/test/D10.data";
-    std::string sstdatafile = "data/test/D10_sst.data";
-    std::string outfile = "data/test/D10_out.data";
-    std::string sstoutfile = "data/test/D10_sst_out.data";
-    xmlpool.process(datafile, false);
-    xmlpool.export_sstdata(sstdatafile);
-    cout << "sstminer... " << endl;
-    sstminer(sstdatafile, sstoutfile, "-s", s);
-    cout << "treeminer... " << endl;
-    treeminer(datafile, outfile, "-s", s);
-}
-
-int main() {
-    // XMLPool xmlpool = XMLPool();
-    // std::string testfile0 = "data/test.xml";
-    // std::string testfile1 = "data/test1.xml";
-    // std::string xmlfile1 = "tinyxml2/dream.xml";
-    // std::string xmlfile2 = "data/ucd-sample-xml-files-appendix-g/NonSeller_ARM_121118.xml";
-    double s = 0.5;
-    // test_f5(s);
-    // test_f5(s, true);
-
-    // test_f5leaf(s);
-    // test_f5leaf(s, true);
-
-    // test_sst(s,true);
-    // test_sst(s,false);
-
-    test_testF5(0.1);
-    test_testD10(0.1);
     return 0;
 }

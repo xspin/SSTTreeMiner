@@ -783,12 +783,13 @@ void sstminer(const string& datafile, const string& outfile, const string& t, do
    cout << "  data file: " << datafile << endl 
       << "  output file: " << outfile << endl;
    assert(is_file_exist(datafile));
+   assert(is_valid_data(datafile));
    fout.open(outfile.c_str());
    // treeminer -i datafile -s[S] minsup 
    sprintf(infile,"%s",datafile.c_str());
    if(t == "-s") //support value for L2
       MINSUP_PER = minsup;
-   else if (t == "S") { //absolute support
+   else if (t == "-S") { //absolute support
       MINSUPPORT = int(minsup);
    } else {
       cerr << "sstminer: invalid arg: " << t << endl;

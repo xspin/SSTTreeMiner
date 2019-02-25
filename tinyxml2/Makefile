@@ -12,6 +12,18 @@ RANLIB = ranlib
 MKDIR = mkdir -p
 CXXFLAGS = -fPIC
 
+TARGET = xmltest staticlib
+
+platform=
+WINCXX = i686-w64-mingw32-g++
+CCSRC = tinyxml2.cpp
+CCOBJ = $(CCSRC:.cpp=win.o) 
+winlib = libwintinyxml2.a
+ifeq ($(platform),win)
+	CXX=$(WINCXX)
+	TARGET = $(winlib)
+endif
+
 INSTALL = install
 INSTALL_PROGRAM = $(INSTALL)
 INSTALL_DATA = $(INSTALL) -m 644
@@ -21,7 +33,7 @@ bindir = $(prefix)/bin
 libdir = $(prefix)/lib
 includedir = $(prefix)/include
 
-all: xmltest staticlib
+all: $(TARGET)
 
 rebuild: clean all
 
@@ -35,11 +47,11 @@ effc:
         -Wno-unused-parameter -Weffc++ xmltest.cpp tinyxml2.cpp -o xmltest
 
 clean:
-	-$(RM) *.o xmltest libtinyxml2.a
+	-$(RM) *.o xmltest *.a
 
 # Standard GNU target
 distclean:
-	-$(RM) *.o xmltest libtinyxml2.a
+	-$(RM) *.o xmltest *.a
 
 test: clean xmltest
 	./xmltest
@@ -53,6 +65,12 @@ staticlib: libtinyxml2.a
 libtinyxml2.a: tinyxml2.o
 	$(AR) $(ARFLAGS) $@ $^
 	$(RANLIB) $@
+
+$(CCOBJ): $(CCSRC) 
+	$(CXX) -c $(CCSRC) -o $@
+
+$(winlib): $(CCOBJ)
+	$(AR) rcs $@ $(CCOBJ)
 
 tinyxml2.o: tinyxml2.cpp tinyxml2.h
 

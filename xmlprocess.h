@@ -6,6 +6,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <cassert>
 #include <unordered_map>
 #include <set>
@@ -66,6 +67,7 @@ std::vector<int> sst_process(const std::vector<int>& encoding, int i=0, int j=-1
     return new_encoding;
 }
 
+
 class XMLPool{
     public:
     XMLPool(bool count_leaf=false, bool sst=false) {
@@ -75,8 +77,12 @@ class XMLPool{
     ~XMLPool() {
     }
 
+    void process_sst(string& file) {
+        return process(file, false);
+    }
+
     void process(string& file, bool isxml=true) {
-        cout << "\nProcessing: " << file << endl;
+        cout << "Processing: " << file << endl;
         assert(is_file_exist(file));
         if(isxml) {
             XMLPrinter printer;
@@ -153,6 +159,44 @@ class XMLPool{
     }
 
 
+    void export_data(const string& idfile, const string& datafile){
+        cout << "Exporting...\n";
+        cout << "  Data file: " << datafile << endl;
+        cout << "  ID file: " << idfile << endl;
+        ofstream idfd(idfile);
+        ofstream datafd(datafile);
+        cout << "  #Nodes: " << nodeName_.size() << endl;
+        for(auto i=0; i<nodeName_.size(); i++) {
+            idfd << i << " " << nodeName_[i] << "\n";
+        }
+        for(auto i=0; i<tree_.size(); i++) {
+            cout << "  Len tree#" << i << ": " << tree_[i].size() << endl;
+            int k;
+            for(k=0; k<tree_[i].size()-1; k++) {
+                datafd << tree_[i][k] << " ";
+            }
+            datafd << tree_[i][k] << "\n";
+        }
+        datafd.close();
+        idfd.close();
+    }
+    void export_sstdata(const string& datafile){
+        cout << "Exporting...\n";
+        cout << "  SST Data file: " << datafile << endl;
+        ofstream sstdatafd(datafile);
+        cout << "  #Nodes: " << nodeId_.size() << endl;
+        for(auto i=0; i<tree_.size(); i++) {
+            // cout << "Len ssttree#" << i << ": " << ssttree_[i].size() << endl;
+            int k;
+            for(k=0; k<ssttree_[i].size()-1; k++) {
+                sstdatafd << ssttree_[i][k] << " ";
+            }
+            sstdatafd << ssttree_[i][k] << "\n";
+        }
+        sstdatafd.close();
+    }
+
+    private:
     void dfs(vector<int>& encoding, XMLNode* root, int depth=0) {
         int spaces = 2;
         if(!root) return;
@@ -200,42 +244,6 @@ class XMLPool{
         encoding.push_back(-1);
     }
 
-    void export_data(const string& idfile, const string& datafile){
-        cout << "Exporting...\n";
-        cout << "  Data file: " << datafile << endl;
-        cout << "  ID file: " << idfile << endl;
-        ofstream idfd(idfile);
-        ofstream datafd(datafile);
-        cout << "#Nodes: " << nodeName_.size() << endl;
-        for(auto i=0; i<nodeName_.size(); i++) {
-            idfd << i << " " << nodeName_[i] << "\n";
-        }
-        for(auto i=0; i<tree_.size(); i++) {
-            cout << "Len tree#" << i << ": " << tree_[i].size() << endl;
-            int k;
-            for(k=0; k<tree_[i].size()-1; k++) {
-                datafd << tree_[i][k] << " ";
-            }
-            datafd << tree_[i][k] << "\n";
-        }
-        datafd.close();
-        idfd.close();
-    }
-    void export_sstdata(const string& datafile){
-        cout << "Exporting...\n";
-        cout << "  SST Data file: " << datafile << endl;
-        ofstream sstdatafd(datafile);
-        cout << "  #Nodes: " << nodeId_.size() << endl;
-        for(auto i=0; i<tree_.size(); i++) {
-            // cout << "Len ssttree#" << i << ": " << ssttree_[i].size() << endl;
-            int k;
-            for(k=0; k<ssttree_[i].size()-1; k++) {
-                sstdatafd << ssttree_[i][k] << " ";
-            }
-            sstdatafd << ssttree_[i][k] << "\n";
-        }
-        sstdatafd.close();
-    }
 
     private:
     vector<vector<int>> tree_; // one-node tree: 0 -1, two-node tree: 0 1 -1 -1
